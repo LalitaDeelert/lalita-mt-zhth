@@ -5,6 +5,23 @@ import jieba
 def main(args):
     #function to clean data containing sentence pairs 
     print(args)
+    
+    #load csv
+    
+    #print stats of dataset before
+    
+    #deduplicate
+    
+    #calculate similarity score
+    
+    #filter by similarity score
+    
+    #calculate word ratio
+    
+    #filter by word ratio
+    
+    #print stats of dataset after
+    
 
 if __name__ == '__main__':
     
@@ -17,9 +34,9 @@ if __name__ == '__main__':
                         help='Lowercase all characters')
     parser.add_argument('--min_similarity', default=0.5,
                         type=float, help='Minimum mUSE similarity score to retain')
-    parser.add_argument('--min_zhth_ratio', default=0.2,
+    parser.add_argument('--min_zhth_ratio', default=0.7,
                         type=float, help='Minimum ZH/TH word ratio to retain')
-    parser.add_argument('--max_zhth_ratio', default=2,
+    parser.add_argument('--max_zhth_ratio', default=1.2,
                         type=float, help='Maximum ZH/TH word ratio to retain')
 
     args = parser.parse_args()
