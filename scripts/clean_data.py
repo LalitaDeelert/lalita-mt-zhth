@@ -1,87 +1,91 @@
+# python clean_data.py --input_fname ../data/sample.csv \
+# --output_fname ../data/sample_cleaned.csv \
+# --min_similarity 0.5 --min_zhth_ratio 0.5 --max_zhth_ratio 2.0
+
 import argparse
+import glob
+from tqdm.auto import tqdm
+import pandas as pd
 from pythainlp.tokenize import word_tokenize
 import pkuseg
+seg = pkuseg.pkuseg()
+
 import tensorflow as tf
 import tensorflow_hub as hub
 import tensorflow_text
+
+#calculate similarity score
+def get_similar_score(lang1: str, lang2: str, batch_size: int, embed):
+    scores = []
+    if len(lang1) % batch_size != 0:
+        num_of_batch = int(len(lang1)/batch_size)+1
+    else:
+        num_of_batch = int(len(lang1)/batch_size)
+
+    for i in tqdm(range(num_of_batch)):
+        start = i*batch_size
+        end = start+batch_size
+        if i <= num_of_batch:
+            lang1_temp = lang1[start:end]
+            lang2_temp = lang2[start:end]
+
+            lang1_embedding = embed(lang1_temp)
+            lang2_embedding = embed(lang2_temp)
+            distance_matrix = tf.matmul(
+                lang1_embedding, lang2_embedding, transpose_b=True).numpy()
+
+            for j in range(len(distance_matrix)):
+                scores.append(distance_matrix[j][j])
+
+    return scores
+emb = hub.load('https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3', tags=None, options=None)
 
 def main(args):
     #function to clean data containing sentence pairs 
     print(args)
     
     #load csv
-    csv_file_paths = glob.glob(os.path.join(args.input_fname, '*.csv'))
-    df = pd.read_csv(csv_file_path, encoding='utf-8')
-    
-    #print stats of dataset before
-    df['th_str'] = df.th.map(lambda x: len(x))
-    df['zh_str'] = df.zh.map(lambda x: len(x))
-    df['th_word'] = df.th.map(lambda x: len(word_tokenize(x)))
-    df['zh_word'] = df.zh.map(lambda x: len(seg.cut(x)))
-    
-    df.th_str.describe()
-    df.zh_str.describe()
-    df.th_word.describe() 
-    df.zh_word.describe()  
-    df.ratio.describe()    
-    df.Similarity_score.describe()
-
+    df = pd.read_csv(args.input_fname, encoding='utf-8')
+    print(f'loaded {df.shape}')
     
     #deduplicate
-    df.drop_duplicates()
+    df = df.drop_duplicates()
+    df = df.groupby('zh').th.max().reset_index()
+    df = df.groupby('th').zh.max().reset_index()
+    print(f'deduplicated to {df.shape}')
     
-    #calculate similarity score
-    def get_similar_score(lang1: str, lang2: str, batch_size: int, embed):
-        scores = []
-        if len(lang1) % batch_size != 0:
-            num_of_batch = int(len(lang1)/batch_size)+1
-        else:
-            num_of_batch = int(len(lang1)/batch_size)
-        
-        for i in range(num_of_batch):
-            start = i*batch_size
-            end = start+batch_size
-            if i <= num_of_batch:
-                lang1_temp = lang1[start:end]
-                lang2_temp = lang2[start:end]
-                
-                lang1_embedding = embed(lang1_temp)
-                lang2_embedding = embed(lang2_temp)
-                distance_matrix = tf.matmul(
-                    lang1_embedding, lang2_embedding, transpose_b=True).numpy()
-
-                for j in range(len(distance_matrix)):
-                    scores.append(distance_matrix[j][j])
-                    
-        return scores
-    emb = hub.load('https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3', tags=None, options=None)
-    df['Similarity_score'] = get_similar_score(zh_lines, th_lines, 16, emb)
-    
-    #filter by similarity score
-    min_similarity = args.min_similarity
-    df = df[df['Similarity_score'] >= min_similarity]
-    
-    #calculate word ratio
-    ratio = df['th_word'] / df['zh_word']
-    df['Ratio'] = ratio
-    
-    #filter by word ratio
-    min_zhth_ratio = args.min_zhth_ratio
-    max_zhth_ratio = args.max_zhth_ratio
-    df = df[df['Ratio'] >= min_zhth_ratio and df['Ratio'] <= max_zhth_ratio]
-    
-    #print stats of dataset after
-    df['th_str'] = df.th.map(lambda x: len(x))
-    df['zh_str'] = df.zh.map(lambda x: len(x))
+    #print stats of dataset before
+    df['th_char'] = df.th.map(lambda x: len(x))
+    df['zh_char'] = df.zh.map(lambda x: len(x))
     df['th_word'] = df.th.map(lambda x: len(word_tokenize(x)))
     df['zh_word'] = df.zh.map(lambda x: len(seg.cut(x)))
     
-    df.th_str.describe()
-    df.zh_str.describe()
-    df.th_word.describe() 
-    df.zh_word.describe()  
-    df.ratio.describe()    
-    df.Similarity_score.describe()
+    #calculate similarity score
+    df['similarity_score'] = get_similar_score(df.zh.tolist(), df.th.tolist(), args.batch_size, emb)
+    
+    #filter by similarity score
+    df = df[df['similarity_score'] >= args.min_similarity]
+    
+    #calculate word ratio
+    df['zhth_ratio'] = df['zh_word'] / df['th_word']
+    
+    #filter by word ratio
+    df = df[df['zhth_ratio'].map(lambda x: (x >= args.min_zhth_ratio) & (x <= args.max_zhth_ratio))]
+    
+    #print stats of dataset after
+    print('zh/th characters')
+    print(df.zh_char.describe())
+    print(df.th_char.describe())
+    print('zh/th words')
+    print(df.zh_word.describe()) 
+    print(df.th_word.describe()) 
+    print('zh/th ratios')
+    print(df.zhth_ratio.describe()) 
+    print('zh/th similarity scores')
+    print(df.similarity_score.describe())
+    
+    #save
+    df.to_csv(args.output_fname, index=False)
 
 if __name__ == '__main__':
     
@@ -92,11 +96,13 @@ if __name__ == '__main__':
                        help='File to save as output')
     parser.add_argument('--lowercase', action='store_true',
                         help='Lowercase all characters')
+    parser.add_argument('--batch_size', default=16,
+                        type=int, help='Batch size to perform mUSE similarity')
     parser.add_argument('--min_similarity', default=0.5,
                         type=float, help='Minimum mUSE similarity score to retain')
-    parser.add_argument('--min_zhth_ratio', default=0.7,
+    parser.add_argument('--min_zhth_ratio', default=0.5,
                         type=float, help='Minimum ZH/TH word ratio to retain')
-    parser.add_argument('--max_zhth_ratio', default=1.2,
+    parser.add_argument('--max_zhth_ratio', default=2.0,
                         type=float, help='Maximum ZH/TH word ratio to retain')
 
     args = parser.parse_args()
