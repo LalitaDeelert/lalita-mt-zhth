@@ -1,5 +1,5 @@
-# python clean_data.py --input_fname ../data/sample.csv \
-# --output_fname ../data/sample_cleaned.csv \
+# python clean_data.py --input_fname ../data/TED_zhth_ALL.csv \
+# --output_fname ../data/ted_zhth_cleaned.csv --batch_size 128 \
 # --min_similarity 0.5 --min_zhth_ratio 0.5 --max_zhth_ratio 2.0
 
 import argparse
@@ -15,6 +15,7 @@ import tensorflow_hub as hub
 import tensorflow_text
 
 #calculate similarity score
+emb = hub.load('https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3', tags=None, options=None)
 def get_similar_score(lang1: str, lang2: str, batch_size: int, embed):
     scores = []
     if len(lang1) % batch_size != 0:
@@ -38,7 +39,6 @@ def get_similar_score(lang1: str, lang2: str, batch_size: int, embed):
                 scores.append(distance_matrix[j][j])
 
     return scores
-emb = hub.load('https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3', tags=None, options=None)
 
 def main(args):
     #function to clean data containing sentence pairs 
@@ -59,18 +59,23 @@ def main(args):
     df['zh_char'] = df.zh.map(lambda x: len(x))
     df['th_word'] = df.th.map(lambda x: len(word_tokenize(x)))
     df['zh_word'] = df.zh.map(lambda x: len(seg.cut(x)))
+    print('calculated char/word statistics')
     
     #calculate similarity score
     df['similarity_score'] = get_similar_score(df.zh.tolist(), df.th.tolist(), args.batch_size, emb)
+    print('calculated mUSE similarity scores')
     
     #filter by similarity score
     df = df[df['similarity_score'] >= args.min_similarity]
+    print('filtered by mUSE similarity scores')
     
     #calculate word ratio
     df['zhth_ratio'] = df['zh_word'] / df['th_word']
+    print('calculated zhth ratios')
     
     #filter by word ratio
     df = df[df['zhth_ratio'].map(lambda x: (x >= args.min_zhth_ratio) & (x <= args.max_zhth_ratio))]
+    print('filtered by zhth word ratios')
     
     #print stats of dataset after
     print('zh/th characters')
@@ -96,7 +101,7 @@ if __name__ == '__main__':
                        help='File to save as output')
     parser.add_argument('--lowercase', action='store_true',
                         help='Lowercase all characters')
-    parser.add_argument('--batch_size', default=16,
+    parser.add_argument('--batch_size', default=128,
                         type=int, help='Batch size to perform mUSE similarity')
     parser.add_argument('--min_similarity', default=0.5,
                         type=float, help='Minimum mUSE similarity score to retain')
