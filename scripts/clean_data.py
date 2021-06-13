@@ -40,6 +40,17 @@ def get_similar_score(lang1: str, lang2: str, batch_size: int, embed):
 
     return scores
 
+from functools import partial
+#calculate character ratio within one monolingual sentence
+def get_char_ratio(txt, pattern = r'[\u4e00-\u9fff_1-9]+'):
+    #zh r'[\u4e00-\u9fff_1-9]+'
+    #th r'[ก-๙_1-9]+'
+    found = re.findall(pattern,txt.replace(' ',''))
+    if found:
+        return len(''.join(found))/len(txt)
+    else:
+        return 0
+
 def main(args):
     #function to clean data containing sentence pairs 
     print(args)
@@ -77,6 +88,10 @@ def main(args):
     df = df[df['zhth_ratio'].map(lambda x: (x >= args.min_zhth_ratio) & (x <= args.max_zhth_ratio))]
     print('filtered by zhth word ratios')
     
+    #get character ratio within monolingual sentences
+    df['th_char_ratio'] = df.th.map(partial(get_char_ratio, pattern=r'[ก-๙_1-9]+'))
+    df['zh_char_ratio'] = df.zh.map(partial(get_char_ratio, pattern=r'[\u4e00-\u9fff_1-9]+'))
+    
     #print stats of dataset after
     print('zh/th characters')
     print(df.zh_char.describe())
@@ -88,6 +103,10 @@ def main(args):
     print(df.zhth_ratio.describe()) 
     print('zh/th similarity scores')
     print(df.similarity_score.describe())
+    print('zh character ratios')
+    print(df.zh_char_ratio.describe()) 
+    print('zh character ratios')
+    print(df.th_char_ratio.describe()) 
     
     #save
     df.to_csv(args.output_fname, index=False)
