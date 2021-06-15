@@ -1,5 +1,5 @@
-# python clean_data.py --input_fname ../data/TED_zhth_ALL.csv \
-# --output_fname ../data/ted_zhth_cleaned.csv --batch_size 128 \
+# python clean_data.py --input_fname ../data/scb_mt_opus_all.csv \
+# --output_fname ../data/scb_mt_opus_calculated.csv --batch_size 128 \
 # --min_similarity 0.5 --min_zhth_ratio 0.5 --max_zhth_ratio 2.0
 
 import argparse
@@ -9,7 +9,7 @@ import pandas as pd
 from pythainlp.tokenize import word_tokenize
 import pkuseg
 seg = pkuseg.pkuseg()
-
+import re
 import tensorflow as tf
 import tensorflow_hub as hub
 import tensorflow_text
@@ -56,7 +56,7 @@ def main(args):
     print(args)
     
     #load csv
-    df = pd.read_csv(args.input_fname, encoding='utf-8')
+    df = pd.read_csv(args.input_fname, encoding='utf-8')[['zh','th']]
     print(f'loaded {df.shape}')
     
     #deduplicate
