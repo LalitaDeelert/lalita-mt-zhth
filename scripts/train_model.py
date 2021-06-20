@@ -86,7 +86,7 @@ def compute_metrics(eval_preds,
     return result
 
 def main(args):
-    df = pd.read_csv(args.input_fname, encoding='utf-8')[[args.source_lang,args.target_lang]].head(1000) #debug
+    df = pd.read_csv(args.input_fname, encoding='utf-8')[[args.source_lang,args.target_lang]]
     logging.info(f'Loaded {df.shape}')
     
     #convert to dictionary
@@ -137,7 +137,7 @@ def main(args):
     trainer = Seq2SeqTrainer(
         model,
         training_args,
-        train_dataset=tokenized_datasets["test"], #debug
+        train_dataset=tokenized_datasets["train"],
         eval_dataset=tokenized_datasets["test"],
         data_collator=data_collator,
         tokenizer=tokenizer,
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_total_limit', type=int, default=3)
     parser.add_argument('--fp16', action='store_true')
     
-    parser.add_argument('--valid_pct', type=float, default=0.01) #debug
+    parser.add_argument('--valid_pct', type=float, default=0.01)
     parser.add_argument('--seed', type=int, default=42)
 
     args = parser.parse_args()
