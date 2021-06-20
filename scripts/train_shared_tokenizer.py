@@ -1,4 +1,4 @@
-# python train_shared_tokenizer.py --input_fname ../data/v1/Train.csv --output_dir ../models/marian-mt-zh_cn-th
+# python train_shared_tokenizer.py --input_fname ../data/v1/Train.csv --output_dir ../models/marianmt-zh_cn-th
 
 import argparse
 import json
@@ -35,17 +35,17 @@ def train_spm_tokenizer(train_fname,
     #create tokenizer folder if not present
     if not os.path.exists(model_dir):
         os.mkdir(model_dir)
-    shutil.move('both.model',model_dir)
-    shutil.move('both.vocab',model_dir)
+    shutil.move('both.model', f'{model_dir}/both.model')
+    shutil.move('both.vocab', f'{model_dir}/both.vocab')
 
 def main(args):
-    df = pd.read_csv(args.input_fname)
+    df = pd.read_csv(args.input_fname)[[args.source_lang, args.target_lang]]
     logging.info(f'Loaded {df.shape}')
     
     #convert to dictionary
     j = {'translation':[]}
     for i in df.itertuples():
-        j['translation'] += [{'zh_cn':i[args.zh_cn_idx+1], 'th':i[args.th_idx+1]}]
+        j['translation'] += [{args.source_lang:i[1], args.target_lang:i[2]}]
     #load into dataset
     train_dataset = Dataset.from_dict(j)
     raw_datasets = train_dataset.train_test_split(test_size=args.valid_pct, seed=args.seed)
@@ -149,7 +149,7 @@ def main(args):
       "vocab_size": vocab_special_size
     }'''.replace('vocab_special_size', str(vocab_special_size))
 
-    with open('{args.output_dir}/config.json','w') as f:
+    with open(f'{args.output_dir}/config.json','w') as f:
         f.write(config_json)
     logging.info(f'Sucessfully saved config.json')
     
@@ -164,6 +164,8 @@ if __name__ == '__main__':
                        help='Input file containing sentence pairs to train tokenizer for MarianMT')
     parser.add_argument('--output_dir', type=str, 
                        help='Output dir to save tokenizer files')
+    parser.add_argument('--source_lang', type=str, default='zh')
+    parser.add_argument('--target_lang', type=str, default='th')
     
     parser.add_argument('--vocab_size', type=int, default=32000,
                        help='Vocab size')
@@ -177,11 +179,6 @@ if __name__ == '__main__':
                        help='Max sentencepiece token length')
     parser.add_argument('--character_coverage', type=int, default=0.9995,
                        help='Sentencepiece character coverage')
-    
-    parser.add_argument('--zh_cn_idx', type=int, default=0,
-                       help='Column index for zh_cn')
-    parser.add_argument('--th_idx', type=int, default=1,
-                       help='Column index for th')
     
     parser.add_argument('--seed', type=int, default=42,
                        help='Seed to split validation set')
