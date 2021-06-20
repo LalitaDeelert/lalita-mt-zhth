@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--max_input_length', type=int, default=160)
     parser.add_argument('--max_target_length', type=int, default=160)
-    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--num_train_epochs', type=int, default=10)
     parser.add_argument('--learning_rate', type=float, default=2e-5)
     parser.add_argument('--warmup_ratio', type=float, default=0.1)
