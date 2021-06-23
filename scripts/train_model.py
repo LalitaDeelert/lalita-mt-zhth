@@ -97,7 +97,6 @@ def main(args):
     train_dataset = Dataset.from_dict(j)
     raw_datasets = train_dataset.train_test_split(test_size=args.valid_pct, 
                                                   seed=args.seed)
-    raw_datasets['train'] = raw_datasets['test'] #debug
     logging.info(f'Datasets created {raw_datasets}')
     
     tokenizer = MarianTokenizer.from_pretrained(args.output_dir)
