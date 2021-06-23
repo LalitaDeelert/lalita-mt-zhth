@@ -6,7 +6,8 @@
 ### Train tokenizer with shared dictionary
 
 ```
-python train_shared_tokenizer.py --input_fname ../data/v1/Train.csv --output_dir ../models/marianmt-zh_cn-th
+python train_shared_tokenizer.py --input_fname ../data/v1/Train.csv \
+	--output_dir ../models/marianmt-zh_cn-th
 ```
 
 ### Train model
