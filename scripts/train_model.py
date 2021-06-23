@@ -97,6 +97,7 @@ def main(args):
     train_dataset = Dataset.from_dict(j)
     raw_datasets = train_dataset.train_test_split(test_size=args.valid_pct, 
                                                   seed=args.seed)
+    raw_datasets['train'] = raw_datasets['test'] #debug
     logging.info(f'Datasets created {raw_datasets}')
     
     tokenizer = MarianTokenizer.from_pretrained(args.output_dir)
@@ -111,6 +112,11 @@ def main(args):
                                                   target_lang = args.target_lang), 
                                           batched=True,)
     logging.info(f'Tokenized datasets: {tokenized_datasets}')
+    
+    #filter those with too few tokens
+    tokenized_datasets = tokenized_datasets.filter(lambda example: len(example['translation']['zh'])>2)
+    tokenized_datasets = tokenized_datasets.filter(lambda example: len(example['translation']['th'])>2)
+    logging.info(f'Tokenized datasets when filtered out less than 2 tokens per sequence: {tokenized_datasets}')
 
     config = MarianConfig.from_pretrained(args.output_dir)
     model = MarianMTModel(config)
@@ -149,6 +155,10 @@ def main(args):
     logging.info(f'Trainer created')
 
     trainer.train()
+    
+    model.save_pretrained(f"{args.output_dir}_best")
+    tokenizer.save_pretrained(f"{args.output_dir}_best")
+    logging.info(f'Best model saved')
 
     model.cpu()
     src_text = [
