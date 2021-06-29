@@ -5,3 +5,4 @@ torchvision==0.9.1+cpu
 ipywidgets
 voila
 transformers
+sentencepiece
