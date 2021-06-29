@@ -1,6 +1,6 @@
 -f https://download.pytorch.org/whl/torch_stable.html
 streamlit
-torch==1.8.0 
+torch==1.8.0+cpu
 torchvision==0.9.1+cpu
 ipywidgets
 voila
